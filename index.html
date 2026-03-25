@@ -446,6 +446,104 @@ async function renderHistory() {
     });
   } catch(e) { container.innerHTML='<div class="loading">\u8f09\u5165\u5931\u6557</div>'; }
 }
+
+// ── Remind functions ─────────────────────────────
+function loadReminds() {
+  try { return JSON.parse(localStorage.getItem('reminds_fb')||'{}'); } catch(e) { return {}; }
+}
+function saveRemindsLocal(r) { localStorage.setItem('reminds_fb', JSON.stringify(r)); }
+
+var remindTimers = [];
+function scheduleLocalReminders() {
+  remindTimers.forEach(function(t){ clearTimeout(t); });
+  remindTimers = [];
+  var reminds = loadReminds();
+  Object.keys(reminds).forEach(function(k) {
+    var r = reminds[k];
+    var parts = r.time.split(':');
+    var target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(parts[0]), parseInt(parts[1]), 0);
+    var diff = target.getTime() - Date.now();
+    if (diff > 0) {
+      var t = setTimeout(function() {
+        if (Notification.permission === 'granted') {
+          new Notification('\u63d0\u9192\uff1a'+r.name, { body: r.name+'\u8a72\u5b8c\u6210\u56c9\uff01' });
+        }
+      }, diff);
+      remindTimers.push(t);
+    }
+  });
+}
+
+var _remindSec = '', _remindIdx = -1;
+window.openRemindModal = function(sec, idx, name) {
+  _remindSec = sec; _remindIdx = idx;
+  document.getElementById('modal-item-name').textContent = SEC_NAMES[sec]+' \u203a '+name;
+  var reminds = loadReminds(); var key = sec+'_'+idx; var ex = reminds[key];
+  document.getElementById('m-time').value = ex ? ex.time : '08:00';
+  document.getElementById('btn-del-remind').style.display = ex ? 'block' : 'none';
+  document.getElementById('remind-modal').classList.add('open');
+};
+window.closeRemindModal = function() { document.getElementById('remind-modal').classList.remove('open'); };
+window.saveRemind = function() {
+  var t = document.getElementById('m-time').value;
+  if (!t) { alert('\u8acb\u8f38\u5165\u6642\u9593'); return; }
+  var reminds = loadReminds();
+  var name = (userData.items[_remindSec]||[])[_remindIdx] || '';
+  reminds[_remindSec+'_'+_remindIdx] = { time: t, name: name, sec: _remindSec, idx: _remindIdx };
+  saveRemindsLocal(reminds);
+  closeRemindModal(); SECS.forEach(function(s){ render(s); }); renderRemindList(); scheduleLocalReminders();
+};
+window.deleteRemind = function() {
+  var reminds = loadReminds(); delete reminds[_remindSec+'_'+_remindIdx];
+  saveRemindsLocal(reminds); closeRemindModal(); SECS.forEach(function(s){ render(s); }); renderRemindList(); scheduleLocalReminders();
+};
+window.enableNotifications = async function() {
+  try {
+    var perm = await Notification.requestPermission();
+    if (perm !== 'granted') { alert('\u8acb\u5141\u8a31\u901a\u77e5\u6b0a\u9650'); return; }
+    if ('serviceWorker' in navigator) {
+      await navigator.serviceWorker.register('/a/firebase-messaging-sw.js');
+    }
+    try {
+      var token = await getToken(messaging, { vapidKey: VAPID_KEY });
+      if (currentUser && token) {
+        await setDoc(doc(db,'users',currentUser.uid,'tokens',token), { token: token, ts: Date.now() });
+      }
+    } catch(e) { console.log('FCM token error:', e); }
+    document.getElementById('notif-status').innerHTML = '<span style="color:var(--green2);">\u2714 \u63a8\u64ad\u5df2\u958b\u555f\uff01</span>';
+    document.getElementById('btn-enable-notif').style.display = 'none';
+  } catch(e) {
+    document.getElementById('notif-status').innerHTML = '<span style="color:var(--red);">\u958b\u555f\u5931\u6557\uff1a'+e.message+'</span>';
+  }
+};
+function renderRemindList() {
+  var container = document.getElementById('remind-list');
+  if (!container) return;
+  var reminds = loadReminds(); var keys = Object.keys(reminds);
+  if (keys.length === 0) {
+    container.innerHTML = '<div style="font-family:\'DM Mono\',monospace;font-size:0.8rem;color:var(--muted);">\u5c1a\u672a\u8a2d\u5b9a\u2014\u5230\u4eca\u65e5\u4f5c\u606f\u9801\u9ede\u64ca\u9805\u76ee\u65c1\u7684\u6642\u9418\u5716\u793a</div>';
+    return;
+  }
+  container.innerHTML = '';
+  keys.forEach(function(k) {
+    var r = reminds[k];
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--border);';
+    row.innerHTML = '<div><div style="font-size:0.9rem;color:var(--text2);">'+SEC_NAMES[r.sec]+' \u203a '+r.name+'</div><div style="font-family:\'DM Mono\',monospace;font-size:0.72rem;color:var(--blue);margin-top:2px;">\u23f0 '+r.time+'</div></div>';
+    var del = document.createElement('button');
+    del.textContent = '\u79fb\u9664';
+    del.style.cssText = 'background:none;border:1px solid rgba(196,96,96,0.3);border-radius:2px;color:var(--red);font-family:\'DM Mono\',monospace;font-size:0.7rem;padding:3px 8px;cursor:pointer;';
+    del.addEventListener('click', (function(rk, rs){ return function(){
+      var rn = loadReminds(); delete rn[rk]; saveRemindsLocal(rn);
+      SECS.forEach(function(s){ render(s); }); renderRemindList(); scheduleLocalReminders();
+    };})(k, r.sec));
+    row.appendChild(del); container.appendChild(row);
+  });
+}
+
+document.getElementById('remind-modal').addEventListener('click', function(e){ if(e.target===this) closeRemindModal(); });
+scheduleLocalReminders();
+
 </script>
 </body>
 </html>
