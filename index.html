@@ -208,7 +208,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut as fbSignOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
@@ -227,6 +227,9 @@ const db = getFirestore(app);
 const messaging = getMessaging(app);
 const provider = new GoogleAuthProvider();
 const VAPID_KEY = 'BAGglhejaYXX_yUpH7c2PXKIoyxtFAzs6b10RXZNwP2FwY_H7fRnNnIe9septHtU9UdnIN-3b2ch4M3q1f_cpR8';
+
+// Handle redirect result (for iOS Safari)
+getRedirectResult(auth).catch(function(e){ console.log('redirect result error:', e); });
 
 var now = new Date();
 var dow = now.getDay();
@@ -248,7 +251,13 @@ document.getElementById('dateDisplay').textContent=now.getFullYear()+' \u5e74 '+
 document.getElementById('dayBadge').textContent='\u661f\u671f'+dayNames[dow];
 
 window.signInGoogle = function() {
-  signInWithPopup(auth, provider).catch(function(e){ alert('\u767b\u5165\u5931\u6557\uff1a'+e.message); });
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  if (isIOS || isSafari) {
+    signInWithRedirect(auth, provider).catch(function(e){ alert('\u767b\u5165\u5931\u6557\uff1a'+e.message); });
+  } else {
+    signInWithPopup(auth, provider).catch(function(e){ alert('\u767b\u5165\u5931\u6557\uff1a'+e.message); });
+  }
 };
 
 window.signOut = function() {
