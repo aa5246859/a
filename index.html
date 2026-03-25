@@ -63,6 +63,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .clabel:focus{background:rgba(201,168,76,0.06);color:var(--text);}
 .dbtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0 4px;flex-shrink:0;opacity:0;transition:opacity 0.15s,color 0.15s;}
 .ci:hover .dbtn{opacity:1;}.dbtn:hover{color:var(--red)!important;}
+.clock-btn{background:none;border:1px solid var(--border2);border-radius:2px;color:var(--muted);cursor:pointer;font-size:0.68rem;padding:2px 6px;flex-shrink:0;font-family:'DM Mono',monospace;transition:all 0.15s;opacity:0;}
+.clock-btn.has-remind{color:var(--blue);border-color:rgba(96,128,196,0.4);background:rgba(96,128,196,0.1);opacity:1;}
+.ci:hover .clock-btn{opacity:1;}
+.clock-btn:hover{color:var(--gold);border-color:var(--gold);}
 .btn-add{width:100%;margin-top:12px;padding:10px;background:transparent;border:1px dashed var(--border2);border-radius:3px;color:var(--muted2);font-family:'DM Mono',monospace;font-size:0.82rem;cursor:pointer;transition:all 0.2s;}
 .btn-add:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,0.04);}
 .opct{font-family:'Cormorant Garamond',serif;font-size:4rem;font-weight:600;color:var(--gold2);line-height:1;text-align:center;margin:10px 0 6px;}
@@ -83,6 +87,18 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .hsec{font-family:'DM Mono',monospace;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.14em;color:var(--muted);margin:10px 0 6px;}
 .hsec:first-child{margin-top:0;}.hitem{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:0.9rem;}
 .loading{text-align:center;padding:40px;font-family:'DM Mono',monospace;font-size:0.82rem;color:var(--muted);}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:24px;width:360px;max-width:92vw;}
+.modal h3{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:300;color:var(--gold2);margin-bottom:16px;}
+.mfield{margin-bottom:14px;}
+.mlabel{font-family:'DM Mono',monospace;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);margin-bottom:6px;}
+.minput{width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:3px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:0.9rem;color:var(--text);outline:none;}
+.minput:focus{border-color:var(--gold);}
+.modal-btns{display:flex;gap:8px;margin-top:18px;}
+.btn-m-save{flex:1;padding:10px;background:rgba(201,168,76,0.15);border:1px solid var(--gold);border-radius:3px;color:var(--gold2);font-family:'DM Mono',monospace;font-size:0.82rem;cursor:pointer;}
+.btn-m-cancel{padding:10px 14px;background:transparent;border:1px solid var(--border2);border-radius:3px;color:var(--muted2);font-family:'DM Mono',monospace;font-size:0.82rem;cursor:pointer;}
+.btn-m-del{padding:10px 12px;background:transparent;border:1px solid rgba(196,96,96,0.3);border-radius:3px;color:var(--red);font-family:'DM Mono',monospace;font-size:0.78rem;cursor:pointer;}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 </style>
 </head>
@@ -122,6 +138,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 
     <div class="tab-nav">
       <button class="tab-btn active" onclick="switchTab('today',this)">&#128203; 今日作息</button>
+      <button class="tab-btn" onclick="switchTab('remind',this)">&#9201; 提醒</button>
       <button class="tab-btn" onclick="switchTab('history',this)">&#128197; 歷史紀錄</button>
     </div>
 
@@ -146,14 +163,47 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
       </div>
     </div>
 
+    <div class="tab-panel" id="tab-remind">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">&#9201;</span><span class="card-title">推播提醒設定</span></div>
+        <div class="card-body">
+          <div id="notif-status" style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--muted);margin-bottom:16px;"></div>
+          <button id="btn-enable-notif" onclick="enableNotifications()" style="width:100%;padding:12px;background:rgba(201,168,76,0.12);border:1px solid var(--gold);border-radius:4px;color:var(--gold2);font-family:'DM Mono',monospace;font-size:0.85rem;cursor:pointer;margin-bottom:20px;">&#128276; 開啟推播通知</button>
+          <div style="font-family:'DM Mono',monospace;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--gold);margin-bottom:12px;">已設定的提醒</div>
+          <div id="remind-list"></div>
+          <div style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);margin-top:16px;line-height:1.8;">
+            &#128161; 在今日作息頁面，點擊各項目旁的時鐘圖示來設定提醒時間。<br>
+            &#9888;&#65039; 推播需要在瀏覽器允許通知權限。
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="tab-panel" id="tab-history"><div id="hist-container"></div></div>
+  </div>
+</div>
+
+<!-- Remind Modal -->
+<div class="overlay" id="remind-modal">
+  <div class="modal">
+    <h3>&#9201; 設定提醒</h3>
+    <div style="font-family:'DM Mono',monospace;font-size:0.78rem;color:var(--muted2);margin-bottom:16px;" id="modal-item-name"></div>
+    <div class="mfield">
+      <div class="mlabel">提醒時間</div>
+      <input class="minput" id="m-time" type="time">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-m-cancel" onclick="closeRemindModal()">取消</button>
+      <button class="btn-m-del" id="btn-del-remind" onclick="deleteRemind()" style="display:none;">移除</button>
+      <button class="btn-m-save" onclick="saveRemind()">儲存</button>
+    </div>
   </div>
 </div>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as fbSignOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs, orderBy, query } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCpWPdSTy4f2Vw9vFbDgcZ93kPnJ2HBXPc",
@@ -167,7 +217,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const messaging = getMessaging(app);
 const provider = new GoogleAuthProvider();
+const VAPID_KEY = 'BAGglhejaYXX_yUpH7c2PXKIoyxtFAzs6b10RXZNwP2FwY_H7fRnNnIe9septHtU9UdnIN-3b2ch4M3q1f_cpR8';
 
 var now = new Date();
 var dow = now.getDay();
@@ -241,6 +293,8 @@ async function loadUserData() {
     setSyncStatus('synced');
     SECS.forEach(function(s){ render(s); });
     updateOverall();
+    scheduleLocalReminders();
+    document.getElementById('remind-modal').addEventListener('click', function(e){ if(e.target===this) closeRemindModal(); });
   } catch(e) {
     setSyncStatus('');
     console.error(e);
@@ -298,6 +352,13 @@ function render(sec) {
     };})(i));
     lb.addEventListener('keydown', function(e){ if(e.key==='Enter'){e.preventDefault();lb.blur();} });
     lb.addEventListener('click', function(e){ e.stopPropagation(); });
+    var reminds = loadReminds(); var rKey = sec+'_'+i; var hasRemind = !!reminds[rKey];
+    var clock = document.createElement('button');
+    clock.className = 'clock-btn' + (hasRemind ? ' has-remind' : '');
+    clock.textContent = hasRemind ? reminds[rKey].time : '\u23f0';
+    clock.title = '\u8a2d\u5b9a\u63d0\u9192';
+    clock.addEventListener('click', (function(idx, n){ return function(e){ e.stopPropagation(); openRemindModal(sec, idx, n); };})(i, list[i]));
+
     var del = document.createElement('button'); del.className = 'dbtn'; del.textContent = '\u00d7';
     del.addEventListener('click', (function(idx){ return function(){
       userData.items[sec].splice(idx,1);
@@ -308,7 +369,7 @@ function render(sec) {
       }
       saveItems(); saveDone(); render(sec); updateOverall();
     };})(i));
-    row.appendChild(box); row.appendChild(lb); row.appendChild(del);
+    row.appendChild(box); row.appendChild(lb); row.appendChild(clock); row.appendChild(del);
     container.appendChild(row);
   });
   updateSection(sec);
@@ -350,6 +411,7 @@ window.switchTab = function(tab, btn) {
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
   document.getElementById('tab-'+tab).classList.add('active'); btn.classList.add('active');
   if(tab==='history') renderHistory();
+  if(tab==='remind') renderRemindList();
 };
 
 async function renderHistory() {
