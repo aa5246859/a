@@ -229,7 +229,11 @@ const provider = new GoogleAuthProvider();
 const VAPID_KEY = 'BAGglhejaYXX_yUpH7c2PXKIoyxtFAzs6b10RXZNwP2FwY_H7fRnNnIe9septHtU9UdnIN-3b2ch4M3q1f_cpR8';
 
 // Handle redirect result (for iOS Safari)
-getRedirectResult(auth).catch(function(e){ console.log('redirect result error:', e); });
+getRedirectResult(auth).then(function(result) {
+  if (result && result.user) {
+    console.log('Redirect login success:', result.user.displayName);
+  }
+}).catch(function(e){ console.log('redirect result error:', e.code); });
 
 var now = new Date();
 var dow = now.getDay();
@@ -357,16 +361,16 @@ function render(sec) {
     var isDone = !!(userData.done[sec] && userData.done[sec][i]);
     var row = document.createElement('div'); row.className = 'ci';
     var box = document.createElement('div'); box.className = 'cb'+(isDone?' checked':'');
-    box.addEventListener('click', (function(idx){ return function(){
+    box.addEventListener('click', (function(idx){ return async function(){
       if (!userData.done[sec]) userData.done[sec] = {};
       userData.done[sec][idx] = !userData.done[sec][idx];
-      saveDone(); render(sec); updateOverall();
+      await saveDone(); render(sec); updateOverall();
     };})(i));
     var lb = document.createElement('div'); lb.className = 'clabel'+(isDone?' done':'');
     lb.contentEditable = true; lb.spellcheck = false; lb.textContent = lbl;
-    lb.addEventListener('blur', (function(idx){ return function(){
+    lb.addEventListener('blur', (function(idx){ return async function(){
       userData.items[sec][idx] = lb.textContent.trim() || '\u672a\u547d\u540d';
-      saveItems(); render(sec);
+      await saveItems(); render(sec);
     };})(i));
     lb.addEventListener('keydown', function(e){ if(e.key==='Enter'){e.preventDefault();lb.blur();} });
     lb.addEventListener('click', function(e){ e.stopPropagation(); });
@@ -378,14 +382,14 @@ function render(sec) {
     clock.addEventListener('click', (function(idx, n){ return function(e){ e.stopPropagation(); openRemindModal(sec, idx, n); };})(i, list[i]));
 
     var del = document.createElement('button'); del.className = 'dbtn'; del.textContent = '\u00d7';
-    del.addEventListener('click', (function(idx){ return function(){
+    del.addEventListener('click', (function(idx){ return async function(){
       userData.items[sec].splice(idx,1);
       if (userData.done[sec]) {
         var nd={};
         Object.keys(userData.done[sec]).forEach(function(k){var ki=parseInt(k);if(ki<idx)nd[k]=userData.done[sec][k];else if(ki>idx)nd[ki-1]=userData.done[sec][k];});
         userData.done[sec]=nd;
       }
-      saveItems(); saveDone(); render(sec); updateOverall();
+      await saveItems(); await saveDone(); render(sec); updateOverall();
     };})(i));
     row.appendChild(box); row.appendChild(lb); row.appendChild(clock); row.appendChild(del);
     container.appendChild(row);
