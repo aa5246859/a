@@ -272,45 +272,28 @@ window.signInGoogle = function() {
 };
 
 window.signOut = function() {
-  sessionStorage.removeItem('loginPending');
   fbSignOut(auth);
 };
 
-// Check if we just came back from a redirect login
-var loginPending = sessionStorage.getItem('loginPending') === '1';
-
-// Handle redirect result FIRST before setting up auth listener
+// Check redirect result first (for iOS Safari)
 getRedirectResult(auth).then(function(result) {
-  sessionStorage.removeItem('loginPending');
   if (result && result.user) {
     _showApp(result.user);
-  } else {
-    // No redirect result - set up normal auth listener
-    setupAuthListener();
   }
 }).catch(function(e){
   console.log('redirect err:', e.code);
-  sessionStorage.removeItem('loginPending');
-  setupAuthListener();
 });
 
-function setupAuthListener() {
-  onAuthStateChanged(auth, function(user) {
-    if (user) {
-      _showApp(user);
-    } else {
-      if (loginPending) {
-        // Still waiting for redirect, show loading
-        document.getElementById('loginScreen').style.display = 'flex';
-        return;
-      }
-      _appShown = false;
-      currentUser = null;
-      document.getElementById('loginScreen').style.display = 'flex';
-      document.getElementById('mainApp').style.display = 'none';
-    }
-  });
-}
+onAuthStateChanged(auth, function(user) {
+  if (user) {
+    _showApp(user);
+  } else {
+    _appShown = false;
+    currentUser = null;
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+  }
+});
 
 function setSyncStatus(status) {
   var el = document.getElementById('syncStatus');
