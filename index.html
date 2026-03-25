@@ -21,16 +21,16 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .login-note{font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted);margin-top:20px;line-height:1.8;}
 /* Main app */
 .main-app{display:none;}
-.header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border);}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border);}
 .hl h1{font-family:'Cormorant Garamond',serif;font-size:2.6rem;font-weight:300;color:var(--gold2);letter-spacing:0.04em;line-height:1;margin-bottom:4px;}
 .hl .sub{font-family:'DM Mono',monospace;font-size:0.82rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;}
-.hr{text-align:right;display:flex;flex-direction:column;align-items:flex-end;}
+.hr{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
 #dateDisplay{font-family:'DM Mono',monospace;font-size:0.95rem;color:var(--gold);}
-#dayBadge{display:inline-block;margin-top:4px;padding:4px 12px;border:1px solid var(--border2);border-radius:2px;font-family:'DM Mono',monospace;font-size:0.82rem;color:var(--muted2);}
-.user-info{display:flex;align-items:center;gap:10px;margin-top:10px;justify-content:flex-end;flex-wrap:wrap;}
-.user-avatar{width:38px;height:38px;border-radius:50%;border:2px solid var(--border2);}
-.user-name{font-family:'Noto Serif TC',serif;font-size:0.9rem;color:var(--text2);}
-.btn-logout{background:none;border:1px solid var(--border2);border-radius:2px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.68rem;padding:4px 10px;cursor:pointer;transition:all 0.15s;}
+#dayBadge{display:inline-block;padding:3px 10px;border:1px solid var(--border2);border-radius:2px;font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--muted2);}
+.user-info{display:flex;align-items:center;gap:8px;justify-content:flex-end;}
+.user-avatar{width:34px;height:34px;border-radius:50%;border:2px solid var(--gold);object-fit:cover;}
+.user-name{font-family:'Noto Serif TC',serif;font-size:0.88rem;color:var(--text2);}
+.btn-logout{background:none;border:1px solid var(--border2);border-radius:2px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.65rem;padding:3px 8px;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
 .btn-logout:hover{color:var(--red);border-color:var(--red);}
 .tab-nav{display:flex;gap:2px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px;}
 .tab-btn{flex:1;padding:10px 8px;background:transparent;border:none;border-radius:2px;font-family:'Noto Serif TC',serif;font-size:0.95rem;color:var(--muted2);cursor:pointer;transition:all 0.2s;}
@@ -40,11 +40,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:680px){
 .grid{grid-template-columns:1fr;}
-.header{flex-direction:column;align-items:flex-start;gap:10px;}
-.hr{align-items:flex-start;}
+.header{flex-direction:column;align-items:flex-start;gap:12px;}
+.hr{align-items:flex-start;width:100%;}
+.hr #dateDisplay{font-size:0.85rem;}
+.hr #dayBadge{font-size:0.75rem;}
 .user-info{justify-content:flex-start;}
-.app{padding:20px 16px;}
-.tab-btn{font-size:0.85rem;padding:9px 4px;}
+.user-name{font-size:0.82rem;}
+.app{padding:18px 14px;}
+.tab-btn{font-size:0.82rem;padding:9px 4px;}
+.hl h1{font-size:2rem;}
 }
 .card{background:var(--card);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
 .card-header{padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
@@ -122,7 +126,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
   <!-- Main App -->
   <div class="main-app" id="mainApp">
     <div class="header">
-      <div class="hl"><h1>每日作息</h1><div class="sub">Daily Routine Tracker</div></div>
+      <div class="hl">
+        <h1>每日作息</h1>
+        <div class="sub">Daily Routine Tracker</div>
+      </div>
       <div class="hr">
         <div id="dateDisplay"></div>
         <div id="dayBadge"></div>
