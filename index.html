@@ -27,10 +27,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;bac
 .hr{text-align:right;display:flex;flex-direction:column;align-items:flex-end;}
 #dateDisplay{font-family:'DM Mono',monospace;font-size:0.95rem;color:var(--gold);}
 #dayBadge{display:inline-block;margin-top:4px;padding:4px 12px;border:1px solid var(--border2);border-radius:2px;font-family:'DM Mono',monospace;font-size:0.82rem;color:var(--muted2);}
-.user-info{display:flex;align-items:center;gap:8px;margin-top:8px;justify-content:flex-end;flex-wrap:wrap;}
-.user-avatar{width:26px;height:26px;border-radius:50%;border:1px solid var(--border2);}
-.user-name{font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--muted2);}
-.btn-logout{background:none;border:1px solid var(--border2);border-radius:2px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.62rem;padding:3px 8px;cursor:pointer;transition:all 0.15s;}
+.user-info{display:flex;align-items:center;gap:10px;margin-top:10px;justify-content:flex-end;flex-wrap:wrap;}
+.user-avatar{width:38px;height:38px;border-radius:50%;border:2px solid var(--border2);}
+.user-name{font-family:'Noto Serif TC',serif;font-size:0.9rem;color:var(--text2);}
+.btn-logout{background:none;border:1px solid var(--border2);border-radius:2px;color:var(--muted);font-family:'DM Mono',monospace;font-size:0.68rem;padding:4px 10px;cursor:pointer;transition:all 0.15s;}
 .btn-logout:hover{color:var(--red);border-color:var(--red);}
 .tab-nav{display:flex;gap:2px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px;}
 .tab-btn{flex:1;padding:10px 8px;background:transparent;border:none;border-radius:2px;font-family:'Noto Serif TC',serif;font-size:0.95rem;color:var(--muted2);cursor:pointer;transition:all 0.2s;}
@@ -398,10 +398,11 @@ function updateOverall() {
   document.getElementById('cnt-total').textContent='\u5171 '+total+' \u9805';
 }
 
-window.addItem = function(sec) {
+window.addItem = async function(sec) {
   if (!userData.items[sec]) userData.items[sec]=[];
   userData.items[sec].push('\u65b0\u9805\u76ee');
-  saveItems(); render(sec); updateOverall();
+  await saveItems();
+  render(sec); updateOverall();
   var labels=document.querySelectorAll('#list-'+sec+' .clabel');
   if(labels.length){var last=labels[labels.length-1];last.focus();try{var r=document.createRange();r.selectNodeContents(last);window.getSelection().removeAllRanges();window.getSelection().addRange(r);}catch(e){}}
 };
