@@ -290,6 +290,8 @@ async function loadUserData() {
     }
 
     userData.done = doneDoc.exists() ? doneDoc.data() : {};
+    // Pre-load reminds cache
+    await loadReminds();
     setSyncStatus('synced');
     SECS.forEach(function(s){ render(s); });
     updateOverall();
@@ -352,10 +354,10 @@ function render(sec) {
     };})(i));
     lb.addEventListener('keydown', function(e){ if(e.key==='Enter'){e.preventDefault();lb.blur();} });
     lb.addEventListener('click', function(e){ e.stopPropagation(); });
-    var reminds = loadReminds(); var rKey = sec+'_'+i; var hasRemind = !!reminds[rKey];
+    var reminds = _remindsCache || {}; var rKey = sec+'_'+i; var hasRemind = !!reminds[rKey];
     var clock = document.createElement('button');
     clock.className = 'clock-btn' + (hasRemind ? ' has-remind' : '');
-    clock.textContent = hasRemind ? reminds[rKey].time : '\u23f0';
+    clock.textContent = hasRemind ? (reminds[rKey]?reminds[rKey].time:'\u23f0') : '\u23f0';
     clock.title = '\u8a2d\u5b9a\u63d0\u9192';
     clock.addEventListener('click', (function(idx, n){ return function(e){ e.stopPropagation(); openRemindModal(sec, idx, n); };})(i, list[i]));
 
@@ -412,7 +414,7 @@ window.switchTab = function(tab, btn) {
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
   document.getElementById('tab-'+tab).classList.add('active'); btn.classList.add('active');
   if(tab==='history') renderHistory();
-  if(tab==='remind') renderRemindList();
+  if(tab==='remind') renderRemindList().catch(function(){});
 };
 
 async function renderHistory() {
@@ -449,16 +451,31 @@ async function renderHistory() {
 }
 
 // ── Remind functions ─────────────────────────────
-function loadReminds() {
-  try { return JSON.parse(localStorage.getItem('reminds_fb')||'{}'); } catch(e) { return {}; }
+var _remindsCache = null;
+
+async function loadReminds() {
+  if (_remindsCache) return _remindsCache;
+  if (!currentUser) return {};
+  try {
+    var snap = await getDoc(doc(db,'users',currentUser.uid,'data','reminds'));
+    _remindsCache = snap.exists() ? snap.data() : {};
+    return _remindsCache;
+  } catch(e) { return {}; }
 }
-function saveRemindsLocal(r) { localStorage.setItem('reminds_fb', JSON.stringify(r)); }
+
+async function saveRemindsToCloud(r) {
+  _remindsCache = r;
+  if (!currentUser) return;
+  try {
+    await setDoc(doc(db,'users',currentUser.uid,'data','reminds'), r);
+  } catch(e) { console.error('save reminds error', e); }
+}
 
 var remindTimers = [];
-function scheduleLocalReminders() {
+async function scheduleLocalReminders() {
   remindTimers.forEach(function(t){ clearTimeout(t); });
   remindTimers = [];
-  var reminds = loadReminds();
+  var reminds = await loadReminds();
   Object.keys(reminds).forEach(function(k) {
     var r = reminds[k];
     var parts = r.time.split(':');
@@ -476,27 +493,27 @@ function scheduleLocalReminders() {
 }
 
 var _remindSec = '', _remindIdx = -1;
-window.openRemindModal = function(sec, idx, name) {
+window.openRemindModal = async function(sec, idx, name) {
   _remindSec = sec; _remindIdx = idx;
   document.getElementById('modal-item-name').textContent = SEC_NAMES[sec]+' \u203a '+name;
-  var reminds = loadReminds(); var key = sec+'_'+idx; var ex = reminds[key];
+  var reminds = await loadReminds(); var key = sec+'_'+idx; var ex = reminds[key];
   document.getElementById('m-time').value = ex ? ex.time : '08:00';
   document.getElementById('btn-del-remind').style.display = ex ? 'block' : 'none';
   document.getElementById('remind-modal').classList.add('open');
 };
 window.closeRemindModal = function() { document.getElementById('remind-modal').classList.remove('open'); };
-window.saveRemind = function() {
+window.saveRemind = async function() {
   var t = document.getElementById('m-time').value;
   if (!t) { alert('\u8acb\u8f38\u5165\u6642\u9593'); return; }
-  var reminds = loadReminds();
+  var reminds = await loadReminds();
   var name = (userData.items[_remindSec]||[])[_remindIdx] || '';
   reminds[_remindSec+'_'+_remindIdx] = { time: t, name: name, sec: _remindSec, idx: _remindIdx };
-  saveRemindsLocal(reminds);
-  closeRemindModal(); SECS.forEach(function(s){ render(s); }); renderRemindList(); scheduleLocalReminders();
+  await saveRemindsToCloud(reminds);
+  closeRemindModal(); SECS.forEach(function(s){ render(s); }); await renderRemindList(); scheduleLocalReminders();
 };
-window.deleteRemind = function() {
-  var reminds = loadReminds(); delete reminds[_remindSec+'_'+_remindIdx];
-  saveRemindsLocal(reminds); closeRemindModal(); SECS.forEach(function(s){ render(s); }); renderRemindList(); scheduleLocalReminders();
+window.deleteRemind = async function() {
+  var reminds = await loadReminds(); delete reminds[_remindSec+'_'+_remindIdx];
+  await saveRemindsToCloud(reminds); closeRemindModal(); SECS.forEach(function(s){ render(s); }); await renderRemindList(); scheduleLocalReminders();
 };
 window.enableNotifications = async function() {
   try {
@@ -517,10 +534,10 @@ window.enableNotifications = async function() {
     document.getElementById('notif-status').innerHTML = '<span style="color:var(--red);">\u958b\u555f\u5931\u6557\uff1a'+e.message+'</span>';
   }
 };
-function renderRemindList() {
+async function renderRemindList() {
   var container = document.getElementById('remind-list');
   if (!container) return;
-  var reminds = loadReminds(); var keys = Object.keys(reminds);
+  var reminds = await loadReminds(); var keys = Object.keys(reminds);
   if (keys.length === 0) {
     container.innerHTML = '<div style="font-family:\'DM Mono\',monospace;font-size:0.8rem;color:var(--muted);">\u5c1a\u672a\u8a2d\u5b9a\u2014\u5230\u4eca\u65e5\u4f5c\u606f\u9801\u9ede\u64ca\u9805\u76ee\u65c1\u7684\u6642\u9418\u5716\u793a</div>';
     return;
@@ -534,9 +551,9 @@ function renderRemindList() {
     var del = document.createElement('button');
     del.textContent = '\u79fb\u9664';
     del.style.cssText = 'background:none;border:1px solid rgba(196,96,96,0.3);border-radius:2px;color:var(--red);font-family:\'DM Mono\',monospace;font-size:0.7rem;padding:3px 8px;cursor:pointer;';
-    del.addEventListener('click', (function(rk, rs){ return function(){
-      var rn = loadReminds(); delete rn[rk]; saveRemindsLocal(rn);
-      SECS.forEach(function(s){ render(s); }); renderRemindList(); scheduleLocalReminders();
+    del.addEventListener('click', (function(rk, rs){ return async function(){
+      var rn = await loadReminds(); delete rn[rk]; await saveRemindsToCloud(rn);
+      SECS.forEach(function(s){ render(s); }); await renderRemindList(); scheduleLocalReminders();
     };})(k, r.sec));
     row.appendChild(del); container.appendChild(row);
   });
